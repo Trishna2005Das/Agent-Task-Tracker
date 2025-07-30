@@ -6,7 +6,9 @@ def create_task(user_id, title, description):
         "task_id": str(uuid4()),
         "user_id": user_id,
         "title": title,
-        "description": description
+        "description": description,
+        "created_at": mongo.datetime.datetime.utcnow(),
+        "status": "pending"
     }
     mongo.db.tasks.insert_one(task)
     return task["task_id"]
@@ -17,7 +19,5 @@ def get_tasks_by_user(user_id):
         task["_id"] = str(task["_id"])
     return tasks
 
-def get_logs_for_user(user_id):
-    logs = mongo.db.logs.find({"user_id": user_id})
-    return [{"task_id": l["task_id"], "response": l["ai_response"]} for l in logs]
-
+def get_task_by_id(task_id, user_id):
+    return mongo.db.tasks.find_one({"task_id": task_id, "user_id": user_id})
