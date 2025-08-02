@@ -1,6 +1,6 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from app.utils.jwt_helper import token_required
-from app.models.task_model import get_logs_for_user
+from app.models.log_model import get_logs_for_user
 
 logs_bp = Blueprint("logs", __name__)
 

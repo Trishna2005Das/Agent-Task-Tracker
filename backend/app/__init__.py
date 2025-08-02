@@ -2,9 +2,11 @@ from flask import Flask
 from flask_pymongo import PyMongo
 from dotenv import load_dotenv
 import os
+from flask_restx import Api
+
 
 mongo = PyMongo()
-
+api = Api(title="KPI Agent API", version="1.0", doc="/docs")  # <- enables Swagger at /docs
 def create_app():
     load_dotenv()  # Load env variables
     app = Flask(__name__)
@@ -14,7 +16,8 @@ def create_app():
     app.config["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
     mongo.init_app(app)
-
+    
+    api.init_app(app)  
     # Import and register blueprints
     from app.routes.auth_routes import auth_bp
     from app.routes.task_routes import task_bp

@@ -1,7 +1,7 @@
 import os
 from app import mongo
 from langchain.chains import LLMChain
-from langchain.llms import OpenAI
+from langchain_community.llms import OpenAI
 from langchain.prompts import PromptTemplate
 
 def run_agent_for_task(task_id, user_id):
