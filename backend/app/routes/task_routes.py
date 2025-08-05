@@ -4,7 +4,8 @@ from app.models.task_model import create_task , get_tasks_by_user, get_task_by_i
 from app import mongo
 from bson import ObjectId
 import datetime
-
+from random import randint
+from datetime import datetime
 task_bp = Blueprint("task", __name__)
 
 # ✅ Create a new task
@@ -48,21 +49,38 @@ def create_task_route():
 
 
 # ✅ Get all tasks (with optional status filter)
+
 @task_bp.route("/tasks", methods=["GET"])
 @token_required
 def get_tasks():
     try:
         status_filter = request.args.get("status", "all")
-        user_id = request.user_id
+        user_id = g.user_id
 
         tasks = get_tasks_by_user(user_id)
-        if status_filter != "all":
-            tasks = [task for task in tasks if task.get("status", "") == status_filter]
 
-        return jsonify({"tasks": tasks}), 200
+        transformed_tasks = []
+        for task in tasks:
+            transformed_tasks.append({
+                "task_id": str(task["_id"]),
+                "title": task.get("title", ""),
+                "description": task.get("description", ""),
+                "status": task.get("status", "Pending"),
+                "progress": randint(0, 100),
+                "type": task.get("type", "Classification"),  # default placeholder
+                "createdAt": task.get("created_at", datetime.utcnow()).strftime("%Y-%m-%d"),
+                "lastRun": "2 hours ago",  # optional placeholder
+            })
+
+        if status_filter != "all":
+            transformed_tasks = [t for t in transformed_tasks if t["status"] == status_filter]
+
+        return jsonify({"tasks": transformed_tasks}), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
 
 
 # ✅ Update a task by ID
@@ -71,7 +89,7 @@ def get_tasks():
 def update_task(task_id):
     try:
         data = request.json
-        user_id = request.user_id
+        user_id = g.user_id
 
         update_data = {
             "title": data.get("title"),
@@ -101,7 +119,7 @@ def update_task(task_id):
 @token_required
 def delete_task(task_id):
     try:
-        user_id = request.user_id
+        user_id = g.user_id
 
         result = mongo.db.tasks.delete_one({"task_id": task_id, "user_id": user_id})
 

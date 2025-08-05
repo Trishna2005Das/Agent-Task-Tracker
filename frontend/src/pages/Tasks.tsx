@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
-// ✅ Task type
+// ✅ Task type aligned with backend response
 type Task = {
   task_id: string;
   title: string;
@@ -38,8 +38,8 @@ type Task = {
   status: string;
   progress: number;
   type: string;
-  created_at: string;
-  last_run?: string | null;
+  createdAt: string;
+  lastRun: string;
 };
 
 export default function Tasks() {
@@ -200,12 +200,12 @@ export default function Tasks() {
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Created:</span>
-                    <span>{task.created_at}</span>
+                    <span>{task.createdAt}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Last run:</span>
-                    <span>{task.last_run || "Never"}</span>
+                    <span>{task.lastRun || "Never"}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">Type:</span>

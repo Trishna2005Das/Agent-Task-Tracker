@@ -51,10 +51,11 @@ def login():
         return jsonify({"error": "Invalid credentials"}), 401
 
     token = generate_jwt_token(str(user["_id"]))
-    return jsonify({"token": token})
+    
 
     return jsonify({
         "token": token,
         "user_id": user["user_id"],
         "name": user["name"]
     }), 200
+    

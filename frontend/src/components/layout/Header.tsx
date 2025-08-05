@@ -14,13 +14,16 @@ import { Bell, Settings, LogOut, User, Zap } from "lucide-react";
 
 export const Header = () => {
   const [notifications] = useState(3);
-  const [userName, setUserName] = useState("John Doe"); // default fallback
+  const [userName, setUserName] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Load user name from localStorage or sessionStorage (whatever you used in login)
-    const name = localStorage.getItem("name"); // or sessionStorage.getItem("name")
-    if (name) setUserName(name);
+    const name = localStorage.getItem("name");
+    if (name && name !== "undefined") {
+      setUserName(name);
+    } else {
+      setUserName(null);
+    }
   }, []);
 
   const handleLogout = () => {
@@ -28,6 +31,13 @@ export const Header = () => {
     localStorage.removeItem("user_id");
     localStorage.removeItem("name");
     navigate("/login");
+  };
+
+  const getInitials = (name: string | null) => {
+    if (!name) return "UN";
+    const parts = name.trim().split(" ");
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
   };
 
   return (
@@ -73,26 +83,28 @@ export const Header = () => {
               <Avatar className="w-8 h-8">
                 <AvatarImage src="/api/placeholder/32/32" alt="Profile" />
                 <AvatarFallback className="bg-gradient-primary text-white text-sm">
-                  {userName.slice(0, 2).toUpperCase()}
+                  {getInitials(userName)}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-sm font-medium hidden md:block">{userName}</span>
+              <span className="text-sm font-medium hidden md:block">
+                {userName || "User"}
+              </span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 bg-card border-border">
             <DropdownMenuItem
               className="flex items-center space-x-2 hover:bg-accent cursor-pointer"
-              onClick={() =>{
-  console.log("Navigating to profile");
-  navigate('/profile');
-}}
+              onClick={() => {
+                console.log("Navigating to profile");
+                navigate("/profile");
+              }}
             >
               <User className="w-4 h-4" />
               <span>Profile</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               className="flex items-center space-x-2 hover:bg-accent cursor-pointer"
-              onClick={() => navigate('/settings')}
+              onClick={() => navigate("/settings")}
             >
               <Settings className="w-4 h-4" />
               <span>Settings</span>
