@@ -3,20 +3,30 @@ from uuid import uuid4
 from datetime import datetime
 
 # ✅ Create a new task with status (default = "pending")
-def create_task(user_id, title, description, status="pending"):
+VALID_STATUSES = {"pending", "running", "completed", "error"}
+
+def create_task(user_id, title, description, status="pending", type="General", priority="Medium", schedule="None", notify=False, auto_retry=False):
+    if status.lower() not in VALID_STATUSES:
+        raise ValueError("Invalid status provided. Must be one of: pending, running, completed, error")
+
     task = {
         "task_id": str(uuid4()),
         "user_id": user_id,
         "title": title,
         "description": description,
-        "status": status.lower(),  # normalize
+        "status": status.lower(),
         "progress": 0,
-        "type": "General",
+        "type": type,
+        "priority": priority,
+        "schedule": schedule,
+        "notify": notify,
+        "auto_retry": auto_retry,
         "created_at": datetime.utcnow(),
         "last_run": None,
     }
     mongo.db.tasks.insert_one(task)
     return task["task_id"]
+
 
 # ✅ Get tasks filtered by user
 def get_tasks_by_user(user_id):

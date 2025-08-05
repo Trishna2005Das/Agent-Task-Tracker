@@ -76,63 +76,58 @@ export default function RunAI() {
 
     setIsRunning(true);
     setProgress(0);
+    setResults(null);
 
-    // Simulate AI processing
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsRunning(false);
-          
-          // Mock results based on selected model
-          const model = aiModels.find(m => m.id === selectedModel);
-          setResults({
-            model: model?.name,
-            input: inputText,
-            confidence: Math.random() * 0.3 + 0.7, // 0.7-1.0
-            processingTime: Math.random() * 2 + 0.5, // 0.5-2.5 seconds
-            result: generateMockResult(selectedModel, inputText),
-          });
+    const token = localStorage.getItem("token");
 
-          toast({
-            title: "AI Processing Complete",
-            description: "Your request has been processed successfully.",
-          });
-          
-          return 100;
-        }
-        return prev + Math.random() * 15 + 5;
+    try {
+      // Simulate progress bar
+      const progressInterval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 90) return prev;
+          return Math.min(prev + Math.random() * 10 + 5, 90);
+        });
+      }, 300);
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/tasks/${selectedModel}/run`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ?? "",
+        },
+        body: JSON.stringify({ input: inputText }), // Optional, if backend uses input
       });
-    }, 200);
-  };
 
-  const generateMockResult = (modelId: string, input: string) => {
-    switch (modelId) {
-      case "sentiment-analyzer":
-        return {
-          sentiment: "positive",
-          score: 0.87,
-          emotions: ["satisfaction", "gratitude"],
-        };
-      case "email-classifier":
-        return {
-          category: "Technical Support",
-          priority: "High",
-          department: "Engineering",
-        };
-      case "response-generator":
-        return {
-          response: "Thank you for reaching out! I understand your concern and I'm here to help. Let me connect you with our technical team who can assist you with this issue.",
-          tone: "Professional & Helpful",
-        };
-      case "ticket-router":
-        return {
-          department: "Customer Success",
-          agent: "Sarah Johnson",
-          estimatedWaitTime: "5 minutes",
-        };
-      default:
-        return { message: "Processing completed successfully" };
+      const data = await response.json();
+      clearInterval(progressInterval);
+
+      if (!response.ok) {
+        throw new Error(data.error || "AI processing failed");
+      }
+
+      setProgress(100);
+      setResults({
+        model: aiModels.find((m) => m.id === selectedModel)?.name || selectedModel,
+        input: inputText,
+        confidence: Math.random() * 0.3 + 0.7,
+        processingTime: Math.random() * 2 + 0.5,
+        result: data.ai_response,
+      });
+
+      toast({
+        title: "AI Processing Complete",
+        description: "Your request has been processed successfully.",
+      });
+    } catch (error: any) {
+      setIsRunning(false);
+      setProgress(0);
+      toast({
+        title: "Error",
+        description: error.message || "Something went wrong.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRunning(false);
     }
   };
 
@@ -143,6 +138,13 @@ export default function RunAI() {
       title: "Processing Stopped",
       description: "AI processing has been cancelled.",
     });
+  };
+
+  const handleClear = () => {
+    setInputText("");
+    setSelectedModel("");
+    setProgress(0);
+    setResults(null);
   };
 
   return (
@@ -194,7 +196,7 @@ export default function RunAI() {
               {selectedModel && (
                 <div className="mt-4 p-4 bg-gradient-glow rounded-lg border">
                   {(() => {
-                    const model = aiModels.find(m => m.id === selectedModel);
+                    const model = aiModels.find((m) => m.id === selectedModel);
                     return (
                       <div className="flex items-center justify-between">
                         <div>
@@ -256,7 +258,7 @@ export default function RunAI() {
                     Stop Processing
                   </Button>
                 )}
-                <Button variant="outline" className="hover:bg-accent">
+                <Button variant="outline" onClick={handleClear} className="hover:bg-accent">
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Clear
                 </Button>
@@ -264,9 +266,9 @@ export default function RunAI() {
             </CardContent>
           </Card>
 
-          {/* Processing Status */}
+          {/* Processing Progress */}
           {isRunning && (
-            <Card className="bg-card border-border shadow-card">
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <RefreshCw className="w-5 h-5 text-primary animate-spin" />
@@ -274,12 +276,10 @@ export default function RunAI() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  <Progress value={progress} className="h-3" />
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>Processing your request...</span>
-                    <span>{Math.round(progress)}%</span>
-                  </div>
+                <Progress value={progress} className="h-3" />
+                <div className="flex items-center justify-between text-sm text-muted-foreground mt-2">
+                  <span>Working on your request...</span>
+                  <span>{Math.round(progress)}%</span>
                 </div>
               </CardContent>
             </Card>
@@ -287,18 +287,15 @@ export default function RunAI() {
 
           {/* Results */}
           {results && !isRunning && (
-            <Card className="bg-card border-border shadow-card">
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-success" />
                   Results
                 </CardTitle>
-                <CardDescription>
-                  AI processing completed successfully
-                </CardDescription>
+                <CardDescription>AI processing completed</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Metadata */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gradient-glow rounded-lg">
                   <div className="text-center">
                     <div className="text-sm text-muted-foreground">Model</div>
@@ -314,25 +311,11 @@ export default function RunAI() {
                   </div>
                 </div>
 
-                {/* Result Data */}
-                <div className="space-y-3">
-                  <h4 className="font-medium">Analysis Results:</h4>
-                  <div className="bg-muted/50 p-4 rounded-lg">
-                    <pre className="text-sm overflow-auto">
-                      {JSON.stringify(results.result, null, 2)}
-                    </pre>
+                <div>
+                  <h4 className="font-medium mb-2">Analysis Result:</h4>
+                  <div className="bg-muted/50 p-4 rounded-lg overflow-auto">
+                    <pre className="text-sm">{JSON.stringify(results.result, null, 2)}</pre>
                   </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <Button variant="outline" className="hover:bg-accent">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export Results
-                  </Button>
-                  <Button variant="outline" className="hover:bg-accent">
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Run Again
-                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -347,79 +330,18 @@ export default function RunAI() {
               <CardTitle className="text-lg">Quick Stats</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Runs Today</span>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Runs Today</span>
                 <Badge>42</Badge>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Success Rate</span>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Success Rate</span>
                 <Badge variant="outline">98.5%</Badge>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Avg. Time</span>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Avg. Time</span>
                 <Badge variant="secondary">1.2s</Badge>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Model Info */}
-          {selectedModel && (
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="text-lg">Model Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                {(() => {
-                  const model = aiModels.find(m => m.id === selectedModel);
-                  return (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-success" />
-                        <span>Optimized for customer support</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-info" />
-                        <span>{model?.speed} processing speed</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Zap className="w-4 h-4 text-warning" />
-                        <span>High accuracy results</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 text-muted-foreground" />
-                        <span>Consider input size limits</span>
-                      </div>
-                    </>
-                  );
-                })()}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Recent Runs */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-lg">Recent Runs</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {[
-                { model: "Sentiment Analyzer", time: "2 min ago", status: "success" },
-                { model: "Email Classifier", time: "15 min ago", status: "success" },
-                { model: "Response Generator", time: "1 hour ago", status: "error" },
-              ].map((run, index) => (
-                <div key={index} className="flex items-center justify-between text-sm">
-                  <div>
-                    <div className="font-medium">{run.model}</div>
-                    <div className="text-muted-foreground">{run.time}</div>
-                  </div>
-                  <Badge
-                    variant={run.status === "success" ? "default" : "destructive"}
-                    className="text-xs"
-                  >
-                    {run.status}
-                  </Badge>
-                </div>
-              ))}
             </CardContent>
           </Card>
         </div>

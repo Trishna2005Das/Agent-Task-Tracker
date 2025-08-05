@@ -1,6 +1,6 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify,g
 from app.utils.jwt_helper import token_required
-from app.models.task_model import create_task as create_task_db, get_tasks_by_user, get_task_by_id
+from app.models.task_model import create_task , get_tasks_by_user, get_task_by_id
 from app import mongo
 from bson import ObjectId
 import datetime
@@ -10,21 +10,41 @@ task_bp = Blueprint("task", __name__)
 # ✅ Create a new task
 @task_bp.route("/tasks", methods=["POST"])
 @token_required
-def create_task():
+def create_task_route():
     try:
-        data = request.json
-        user_id = request.user_id
+        data = request.get_json()
+        user_id = g.user_id
 
         title = data.get("title")
-        description = data.get("description")
+        description = data.get("description", "")
         status = data.get("status", "pending")
+        type_ = data.get("type", "General")
+        priority = data.get("priority", "Medium")
+        schedule = data.get("schedule", "None")
+        notify = data.get("notify", False)
+        auto_retry = data.get("auto_retry", False)
 
-        task_id = create_task_db(user_id, title, description, status)
+        if not title:
+            return jsonify({"error": "Task title is required"}), 400
+
+        task_id = create_task(
+            user_id=user_id,
+            title=title,
+            description=description,
+            status=status,
+            type=type_,
+            priority=priority,
+            schedule=schedule,
+            notify=notify,
+            auto_retry=auto_retry
+        )
 
         return jsonify({"message": "Task created", "task_id": task_id}), 201
 
+    except ValueError as ve:
+        return jsonify({"error": str(ve)}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
 
 # ✅ Get all tasks (with optional status filter)

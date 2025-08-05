@@ -25,7 +25,7 @@ def signup():
     hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
     user_id = str(uuid.uuid4())
 
-    create_user(user_id=user_id, email=email, hashed_password=hashed_pw, name=name)
+    create_user(user_id=user_id, email=email, hashed_pw=hashed_pw, name=name)
 
     token = generate_jwt_token(user_id)
 
@@ -50,7 +50,8 @@ def login():
     if not user or not bcrypt.checkpw(password.encode('utf-8'), user["password"]):
         return jsonify({"error": "Invalid credentials"}), 401
 
-    token = generate_jwt_token(user["user_id"])
+    token = generate_jwt_token(str(user["_id"]))
+    return jsonify({"token": token})
 
     return jsonify({
         "token": token,

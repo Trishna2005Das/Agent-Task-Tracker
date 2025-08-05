@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
-// ✅ Define task type
+// ✅ Task type
 type Task = {
   task_id: string;
   title: string;
@@ -50,19 +50,28 @@ export default function Tasks() {
   const fetchTasks = async () => {
     try {
       const token = localStorage.getItem("token");
-
-      // ✅ Use correct base URL from Vite env
       const response = await axios.get<{ tasks: Task[] }>(
-        `${import.meta.env.VITE_API_URL}`,
+        `${import.meta.env.VITE_API_URL}/tasks`,
         {
           headers: { Authorization: `Bearer ${token}` },
           params: { status: statusFilter },
         }
       );
-
       setTasks(response.data.tasks || []);
     } catch (err) {
       console.error("Failed to fetch tasks:", err);
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`${import.meta.env.VITE_API_URL}/tasks/${taskId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTasks((prev) => prev.filter((task) => task.task_id !== taskId));
+    } catch (err) {
+      console.error("Failed to delete task:", err);
     }
   };
 
@@ -171,6 +180,7 @@ export default function Tasks() {
                     size="sm"
                     variant="outline"
                     className="hover:bg-destructive hover:text-destructive-foreground"
+                    onClick={() => handleDeleteTask(task.task_id)}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -180,7 +190,7 @@ export default function Tasks() {
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <div className="f${import.meta.env.VITE_API_URL}lex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium">Progress</span>
                     <span className="text-sm text-muted-foreground">{task.progress}%</span>
                   </div>
@@ -210,6 +220,7 @@ export default function Tasks() {
         ))}
       </div>
 
+      {/* Empty state */}
       {filteredTasks.length === 0 && (
         <Card className="bg-card border-border">
           <CardContent className="flex flex-col items-center justify-center py-12">

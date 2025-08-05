@@ -35,7 +35,7 @@ class AuthService {
     }
 
     const result = await response.json();
-    localStorage.setItem('auth_token', result.token);
+    localStorage.setItem('token', result.token);
     return result;
   }
 
@@ -56,16 +56,16 @@ class AuthService {
     const result = await response.json();
 
     // Optional: auto login
-    localStorage.setItem('auth_token', result.token);
+    localStorage.setItem('token', result.token);
     return result;
   }
 
   logout() {
-    localStorage.removeItem('auth_token');
+    localStorage.removeItem('token');
   }
 
   getToken(): string | null {
-    return localStorage.getItem('auth_token');
+    return localStorage.getItem('token');
   }
 
   isAuthenticated(): boolean {

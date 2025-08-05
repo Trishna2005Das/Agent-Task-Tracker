@@ -82,7 +82,10 @@ export const Header = () => {
           <DropdownMenuContent align="end" className="w-56 bg-card border-border">
             <DropdownMenuItem
               className="flex items-center space-x-2 hover:bg-accent cursor-pointer"
-              onClick={() => navigate('/profile')}
+              onClick={() =>{
+  console.log("Navigating to profile");
+  navigate('/profile');
+}}
             >
               <User className="w-4 h-4" />
               <span>Profile</span>
