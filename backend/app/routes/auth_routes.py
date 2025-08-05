@@ -7,10 +7,10 @@ import uuid
 
 auth_bp = Blueprint("auth", __name__)
 
-#signup using bycrpt for hashing password and uudid4 for creating id instead of mongodbs default objectid
+# -------------------- Signup Route --------------------
 @auth_bp.route("/signup", methods=["POST"])
 def signup():
-    data = request.json
+    data = request.get_json()
     email = data.get("email")
     password = data.get("password")
     name = data.get("name")
@@ -23,21 +23,37 @@ def signup():
         return jsonify({"error": "User already exists"}), 409
 
     hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-    user_id = str(uuid.uuid4())  # generate unique user_id
-    create_user(user_id, email, hashed_pw, name)
+    user_id = str(uuid.uuid4())
 
-    return jsonify({"message": "User registered successfully"}), 201
+    create_user(user_id=user_id, email=email, hashed_password=hashed_pw, name=name)
 
-#login using bycrypt
+    token = generate_jwt_token(user_id)
+
+    return jsonify({
+        "message": "User registered successfully",
+        "token": token,
+        "user_id": user_id,
+        "name": name
+    }), 201
+
+# -------------------- Login Route --------------------
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    data = request.json
+    data = request.get_json()
     email = data.get("email")
     password = data.get("password")
+
+    if not email or not password:
+        return jsonify({"error": "Email and password are required"}), 400
 
     user = get_user_by_email(email)
     if not user or not bcrypt.checkpw(password.encode('utf-8'), user["password"]):
         return jsonify({"error": "Invalid credentials"}), 401
 
     token = generate_jwt_token(user["user_id"])
-    return jsonify({"token": token, "user_id": user["user_id"], "name": user["name"]}), 200
+
+    return jsonify({
+        "token": token,
+        "user_id": user["user_id"],
+        "name": user["name"]
+    }), 200

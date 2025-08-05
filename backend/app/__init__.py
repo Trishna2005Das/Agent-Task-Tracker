@@ -3,13 +3,15 @@ from flask_pymongo import PyMongo
 from dotenv import load_dotenv
 import os
 from flask_restx import Api
-
+from flask_cors import CORS
 
 mongo = PyMongo()
+
 api = Api(title="KPI Agent API", version="1.0", doc="/docs")  # <- enables Swagger at /docs
 def create_app():
     load_dotenv()  # Load env variables
     app = Flask(__name__)
+    CORS(app)
     
     app.config["MONGO_URI"] = os.getenv("MONGO_URI")
     app.config["JWT_SECRET"] = os.getenv("JWT_SECRET")
