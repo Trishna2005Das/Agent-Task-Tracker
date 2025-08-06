@@ -31,17 +31,39 @@ def create_task(user_id, title, description, status="pending", type="General", p
 # ✅ Get tasks filtered by user
 def get_tasks_by_user(user_id):
     tasks = list(mongo.db.tasks.find({"user_id": user_id}))
-    for task in tasks:
-        task["_id"] = str(task["_id"])
-        task["created_at"] = task.get("created_at", "").strftime("%Y-%m-%d %H:%M:%S") if task.get("created_at") else ""
-        task["last_run"] = task.get("last_run", "")
-    return tasks
+    transformed_tasks = []
 
-# ✅ Get a single task
+    for task in tasks:
+        transformed_tasks.append({
+            "task_id": task.get("task_id", ""),
+            "title": task.get("title", ""),
+            "description": task.get("description", ""),
+            "status": task.get("status", "pending"),
+            "progress": task.get("progress", 0),
+            "type": task.get("type", "General"),
+            "createdAt": task.get("created_at", datetime.utcnow()).strftime("%Y-%m-%d"),
+            "lastRun": task.get("last_run").strftime("%Y-%m-%d %H:%M:%S") if task.get("last_run") else "Never"
+        })
+
+    return transformed_tasks
+
 def get_task_by_id(task_id, user_id):
     task = mongo.db.tasks.find_one({"task_id": task_id, "user_id": user_id})
-    if task:
-        task["_id"] = str(task["_id"])
-        task["created_at"] = task.get("created_at", "").strftime("%Y-%m-%d %H:%M:%S") if task.get("created_at") else ""
-        task["last_run"] = task.get("last_run", "")
-    return task
+    if not task:
+        return None
+
+    return {
+        "task_id": task.get("task_id", ""),
+        "title": task.get("title", ""),
+        "description": task.get("description", ""),
+        "status": task.get("status", "pending"),
+        "progress": task.get("progress", 0),
+        "type": task.get("type", "General"),
+        "priority": task.get("priority", "Medium"),
+        "schedule": task.get("schedule", "None"),
+        "notify": task.get("notify", False),
+        "auto_retry": task.get("auto_retry", False),
+        "createdAt": task.get("created_at", datetime.utcnow()).strftime("%Y-%m-%d"),
+        "lastRun": task.get("last_run").strftime("%Y-%m-%d %H:%M:%S") if task.get("last_run") else "Never"
+    }
+
