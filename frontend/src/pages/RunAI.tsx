@@ -17,10 +17,7 @@ import {
   Play,
   Square,
   RefreshCw,
-  Download,
   CheckCircle,
-  AlertTriangle,
-  Clock,
   Cpu,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -81,7 +78,6 @@ export default function RunAI() {
     const token = localStorage.getItem("token");
 
     try {
-      // Simulate progress bar
       const progressInterval = setInterval(() => {
         setProgress((prev) => {
           if (prev >= 90) return prev;
@@ -93,9 +89,9 @@ export default function RunAI() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: token ?? "",
+          "Authorization": `Bearer ${token}`, 
         },
-        body: JSON.stringify({ input: inputText }), // Optional, if backend uses input
+        body: JSON.stringify({ input: inputText }),
       });
 
       const data = await response.json();
@@ -314,7 +310,11 @@ export default function RunAI() {
                 <div>
                   <h4 className="font-medium mb-2">Analysis Result:</h4>
                   <div className="bg-muted/50 p-4 rounded-lg overflow-auto">
-                    <pre className="text-sm">{JSON.stringify(results.result, null, 2)}</pre>
+                    {typeof results.result === "string" ? (
+                      <p className="text-sm whitespace-pre-wrap">{results.result}</p>
+                    ) : (
+                      <pre className="text-sm">{JSON.stringify(results.result, null, 2)}</pre>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -324,7 +324,6 @@ export default function RunAI() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Quick Stats */}
           <Card className="bg-gradient-glow border-border">
             <CardHeader>
               <CardTitle className="text-lg">Quick Stats</CardTitle>

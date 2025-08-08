@@ -22,7 +22,7 @@ def create_app():
     app.config["MONGO_URI"] = os.getenv("MONGO_URI")
     app.config["JWT_SECRET"] = os.getenv("JWT_SECRET")
     app.config["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
-
+    app.config["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY")
     mongo.init_app(app)
     
     api.init_app(app)  
