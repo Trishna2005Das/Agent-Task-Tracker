@@ -1,5 +1,11 @@
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +18,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
+  SelectValue
 } from "@/components/ui/select";
 import {
   User,
@@ -26,21 +32,38 @@ import {
   Phone,
   MapPin,
   Calendar,
-  Award,
+  Award
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import axios from "axios";
+
+// ✅ Define Profile Type
+interface ProfileType {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  location: string;
+  role: string;
+  department: string;
+  timezone: string;
+}
 
 export default function Profile() {
   const { toast } = useToast();
-  const [profileData, setProfileData] = useState({
-    firstName: "John",
-    lastName: "Doe",
-    email: "john.doe@company.com",
-    phone: "+1 (555) 123-4567",
-    location: "San Francisco, CA",
-    role: "Customer Support Manager",
-    department: "Customer Success",
-    timezone: "PST",
+  const token = localStorage.getItem("token");
+
+  const [loading, setLoading] = useState(true);
+
+  const [profileData, setProfileData] = useState<ProfileType>({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    location: "",
+    role: "",
+    department: "",
+    timezone: ""
   });
 
   const [preferences, setPreferences] = useState({
@@ -49,20 +72,47 @@ export default function Profile() {
     weeklyReports: true,
     taskReminders: true,
     darkMode: false,
-    autoSave: true,
+    autoSave: true
   });
 
-  const handleSaveProfile = () => {
-    toast({
-      title: "Profile Updated",
-      description: "Your profile has been successfully updated.",
-    });
+  // Fetch profile on mount
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await axios.get<ProfileType>(
+          `${import.meta.env.VITE_API_URL}/profile/`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setProfileData(res.data);
+      } catch (err) {
+        toast({ title: "Error", description: "Failed to load profile." });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, [token, toast]);
+
+  const handleSaveProfile = async () => {
+    try {
+      await axios.put<ProfileType>(
+        `${import.meta.env.VITE_API_URL}/profile/`,
+        profileData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been successfully updated."
+      });
+    } catch {
+      toast({ title: "Error", description: "Failed to update profile." });
+    }
   };
 
   const handleSavePreferences = () => {
     toast({
       title: "Preferences Updated",
-      description: "Your preferences have been saved.",
+      description: "Your preferences have been saved."
     });
   };
 
@@ -70,8 +120,12 @@ export default function Profile() {
     { label: "Tasks Created", value: "156", icon: Award },
     { label: "AI Runs", value: "2,341", icon: Award },
     { label: "Success Rate", value: "98.5%", icon: Award },
-    { label: "Member Since", value: "Jan 2024", icon: Calendar },
+    { label: "Member Since", value: "Jan 2024", icon: Calendar }
   ];
+
+  if (loading) {
+    return <p>Loading...</p>;
+  }
 
   return (
     <div className="space-y-6 max-w-6xl">
@@ -102,7 +156,11 @@ export default function Profile() {
                     Update your personal details and contact information
                   </CardDescription>
                 </div>
-                <Button variant="outline" size="sm" className="hover:bg-accent">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="hover:bg-accent"
+                >
                   <Upload className="w-4 h-4 mr-2" />
                   Upload Photo
                 </Button>
@@ -113,11 +171,15 @@ export default function Profile() {
                 <Avatar className="w-20 h-20">
                   <AvatarImage src="/api/placeholder/80/80" alt="Profile" />
                   <AvatarFallback className="bg-gradient-primary text-white text-lg">
-                    JD
+                    {`${profileData.firstName?.charAt(0) || ""}${
+                      profileData.lastName?.charAt(0) || ""
+                    }`}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-xl font-semibold">{profileData.firstName} {profileData.lastName}</h3>
+                  <h3 className="text-xl font-semibold">
+                    {profileData.firstName} {profileData.lastName}
+                  </h3>
                   <p className="text-muted-foreground">{profileData.role}</p>
                   <Badge variant="outline" className="mt-1">
                     {profileData.department}
@@ -131,7 +193,12 @@ export default function Profile() {
                   <Input
                     id="firstName"
                     value={profileData.firstName}
-                    onChange={(e) => setProfileData(prev => ({ ...prev, firstName: e.target.value }))}
+                    onChange={(e) =>
+                      setProfileData((prev) => ({
+                        ...prev,
+                        firstName: e.target.value
+                      }))
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -139,7 +206,12 @@ export default function Profile() {
                   <Input
                     id="lastName"
                     value={profileData.lastName}
-                    onChange={(e) => setProfileData(prev => ({ ...prev, lastName: e.target.value }))}
+                    onChange={(e) =>
+                      setProfileData((prev) => ({
+                        ...prev,
+                        lastName: e.target.value
+                      }))
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -148,7 +220,12 @@ export default function Profile() {
                     id="email"
                     type="email"
                     value={profileData.email}
-                    onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
+                    onChange={(e) =>
+                      setProfileData((prev) => ({
+                        ...prev,
+                        email: e.target.value
+                      }))
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -156,7 +233,12 @@ export default function Profile() {
                   <Input
                     id="phone"
                     value={profileData.phone}
-                    onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
+                    onChange={(e) =>
+                      setProfileData((prev) => ({
+                        ...prev,
+                        phone: e.target.value
+                      }))
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -164,12 +246,25 @@ export default function Profile() {
                   <Input
                     id="location"
                     value={profileData.location}
-                    onChange={(e) => setProfileData(prev => ({ ...prev, location: e.target.value }))}
+                    onChange={(e) =>
+                      setProfileData((prev) => ({
+                        ...prev,
+                        location: e.target.value
+                      }))
+                    }
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="timezone">Timezone</Label>
-                  <Select value={profileData.timezone} onValueChange={(value) => setProfileData(prev => ({ ...prev, timezone: value }))}>
+                  <Select
+                    value={profileData.timezone}
+                    onValueChange={(value) =>
+                      setProfileData((prev) => ({
+                        ...prev,
+                        timezone: value
+                      }))
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -183,7 +278,10 @@ export default function Profile() {
                 </div>
               </div>
 
-              <Button onClick={handleSaveProfile} className="bg-gradient-primary hover:shadow-glow">
+              <Button
+                onClick={handleSaveProfile}
+                className="bg-gradient-primary hover:shadow-glow"
+              >
                 <Save className="w-4 h-4 mr-2" />
                 Save Changes
               </Button>
@@ -211,35 +309,60 @@ export default function Profile() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label htmlFor="emailNotifications">Email Notifications</Label>
-                      <p className="text-sm text-muted-foreground">Receive task updates via email</p>
+                      <Label htmlFor="emailNotifications">
+                        Email Notifications
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Receive task updates via email
+                      </p>
                     </div>
                     <Switch
                       id="emailNotifications"
                       checked={preferences.emailNotifications}
-                      onCheckedChange={(checked) => setPreferences(prev => ({ ...prev, emailNotifications: checked }))}
+                      onCheckedChange={(checked) =>
+                        setPreferences((prev) => ({
+                          ...prev,
+                          emailNotifications: checked
+                        }))
+                      }
                     />
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label htmlFor="pushNotifications">Push Notifications</Label>
-                      <p className="text-sm text-muted-foreground">Browser push notifications</p>
+                      <Label htmlFor="pushNotifications">
+                        Push Notifications
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Browser push notifications
+                      </p>
                     </div>
                     <Switch
                       id="pushNotifications"
                       checked={preferences.pushNotifications}
-                      onCheckedChange={(checked) => setPreferences(prev => ({ ...prev, pushNotifications: checked }))}
+                      onCheckedChange={(checked) =>
+                        setPreferences((prev) => ({
+                          ...prev,
+                          pushNotifications: checked
+                        }))
+                      }
                     />
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
                       <Label htmlFor="weeklyReports">Weekly Reports</Label>
-                      <p className="text-sm text-muted-foreground">Receive weekly performance summaries</p>
+                      <p className="text-sm text-muted-foreground">
+                        Receive weekly performance summaries
+                      </p>
                     </div>
                     <Switch
                       id="weeklyReports"
                       checked={preferences.weeklyReports}
-                      onCheckedChange={(checked) => setPreferences(prev => ({ ...prev, weeklyReports: checked }))}
+                      onCheckedChange={(checked) =>
+                        setPreferences((prev) => ({
+                          ...prev,
+                          weeklyReports: checked
+                        }))
+                      }
                     />
                   </div>
                 </div>
@@ -254,29 +377,47 @@ export default function Profile() {
                   <div className="flex items-center justify-between">
                     <div>
                       <Label htmlFor="taskReminders">Task Reminders</Label>
-                      <p className="text-sm text-muted-foreground">Remind me about pending tasks</p>
+                      <p className="text-sm text-muted-foreground">
+                        Remind me about pending tasks
+                      </p>
                     </div>
                     <Switch
                       id="taskReminders"
                       checked={preferences.taskReminders}
-                      onCheckedChange={(checked) => setPreferences(prev => ({ ...prev, taskReminders: checked }))}
+                      onCheckedChange={(checked) =>
+                        setPreferences((prev) => ({
+                          ...prev,
+                          taskReminders: checked
+                        }))
+                      }
                     />
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
                       <Label htmlFor="autoSave">Auto-save</Label>
-                      <p className="text-sm text-muted-foreground">Automatically save work in progress</p>
+                      <p className="text-sm text-muted-foreground">
+                        Automatically save work in progress
+                      </p>
                     </div>
                     <Switch
                       id="autoSave"
                       checked={preferences.autoSave}
-                      onCheckedChange={(checked) => setPreferences(prev => ({ ...prev, autoSave: checked }))}
+                      onCheckedChange={(checked) =>
+                        setPreferences((prev) => ({
+                          ...prev,
+                          autoSave: checked
+                        }))
+                      }
                     />
                   </div>
                 </div>
               </div>
 
-              <Button onClick={handleSavePreferences} variant="outline" className="hover:bg-accent">
+              <Button
+                onClick={handleSavePreferences}
+                variant="outline"
+                className="hover:bg-accent"
+              >
                 <Save className="w-4 h-4 mr-2" />
                 Save Preferences
               </Button>
@@ -296,15 +437,24 @@ export default function Profile() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
-                <Button variant="outline" className="w-full justify-start hover:bg-accent">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start hover:bg-accent"
+                >
                   <Key className="w-4 h-4 mr-2" />
                   Change Password
                 </Button>
-                <Button variant="outline" className="w-full justify-start hover:bg-accent">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start hover:bg-accent"
+                >
                   <Shield className="w-4 h-4 mr-2" />
                   Enable Two-Factor Authentication
                 </Button>
-                <Button variant="outline" className="w-full justify-start hover:bg-accent">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start hover:bg-accent"
+                >
                   <Settings className="w-4 h-4 mr-2" />
                   Manage API Keys
                 </Button>
@@ -322,7 +472,10 @@ export default function Profile() {
             </CardHeader>
             <CardContent className="space-y-4">
               {stats.map((stat, index) => (
-                <div key={index} className="flex items-center justify-between">
+                <div
+                  key={index}
+                  className="flex items-center justify-between"
+                >
                   <div className="flex items-center gap-2">
                     <stat.icon className="w-4 h-4 text-primary" />
                     <span className="text-sm">{stat.label}</span>
@@ -366,11 +519,18 @@ export default function Profile() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">Status</span>
-                <Badge variant="outline" className="text-success border-success">Active</Badge>
+                <Badge
+                  variant="outline"
+                  className="text-success border-success"
+                >
+                  Active
+                </Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">Renewal</span>
-                <span className="text-sm text-muted-foreground">Mar 15, 2024</span>
+                <span className="text-sm text-muted-foreground">
+                  Mar 15, 2024
+                </span>
               </div>
             </CardContent>
           </Card>

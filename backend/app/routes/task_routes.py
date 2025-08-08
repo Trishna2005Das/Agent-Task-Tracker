@@ -57,28 +57,19 @@ def get_tasks():
         status_filter = request.args.get("status", "all")
         user_id = g.user_id
 
+        # ✅ This already returns a cleaned list of task dicts
         tasks = get_tasks_by_user(user_id)
 
-        transformed_tasks = []
-        for task in tasks:
-            transformed_tasks.append({
-                "task_id": str(task["_id"]),
-                "title": task.get("title", ""),
-                "description": task.get("description", ""),
-                "status": task.get("status", "Pending"),
-                "progress": randint(0, 100),
-                "type": task.get("type", "Classification"),  # default placeholder
-                "createdAt": task.get("created_at", datetime.utcnow()).strftime("%Y-%m-%d"),
-                "lastRun": "2 hours ago",  # optional placeholder
-            })
-
+        # ✅ Filter by status if provided
         if status_filter != "all":
-            transformed_tasks = [t for t in transformed_tasks if t["status"] == status_filter]
+            tasks = [task for task in tasks if task["status"] == status_filter]
 
-        return jsonify({"tasks": transformed_tasks}), 200
+        return jsonify({"tasks": tasks}), 200
 
     except Exception as e:
+        print("❌ Error in GET /tasks:", e)
         return jsonify({"error": str(e)}), 500
+
 
 
 

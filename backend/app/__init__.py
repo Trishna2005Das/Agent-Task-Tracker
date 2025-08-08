@@ -11,7 +11,13 @@ api = Api(title="KPI Agent API", version="1.0", doc="/docs")  # <- enables Swagg
 def create_app():
     load_dotenv()  # Load env variables
     app = Flask(__name__)
-    CORS(app)
+    CORS(
+    app,
+    resources={r"/*": {"origins": "http://localhost:8081"}},
+    supports_credentials=True,
+    allow_headers=["Content-Type", "Authorization"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+)
     
     app.config["MONGO_URI"] = os.getenv("MONGO_URI")
     app.config["JWT_SECRET"] = os.getenv("JWT_SECRET")
@@ -26,12 +32,11 @@ def create_app():
     from app.routes.ai_routes import ai_bp
     from app.routes.logs_routes import logs_bp
     from app.routes.profile_routes import profile_bp
-    
-    app.register_blueprint(profile_bp)
-
+    app.register_blueprint(profile_bp, url_prefix="/profile")
     app.register_blueprint(auth_bp)
     app.register_blueprint(task_bp)
     app.register_blueprint(ai_bp)
     app.register_blueprint(logs_bp)
+    
 
     return app

@@ -30,62 +30,70 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
+type Task = {
+  task_id: string;
+  title: string;
+  description: string;
+  status: string;
+  progress: number;
+  type: string;
+  createdAt: string;
+  lastRun: string;
+};
+
 export default function Tasks() {
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  const fetchTasks = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get<{ tasks: Task[] }>(
+        `${import.meta.env.VITE_API_URL}/tasks`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          params: statusFilter !== "all" ? { status: statusFilter } : {},
+        }
+      );
+      setTasks(response.data.tasks || []);
+    } catch (err) {
+      console.error("Failed to fetch tasks:", err);
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`${import.meta.env.VITE_API_URL}/tasks/${taskId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTasks((prev) => prev.filter((task) => task.task_id !== taskId));
+    } catch (err) {
+      console.error("Failed to delete task:", err);
+    }
+  };
 
   useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/tasks`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
-        setTasks(response.data.tasks);
-        setError(null);
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load tasks");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchTasks();
-  }, []);
+  }, [statusFilter]);
 
   const getStatusBadge = (status: string) => {
-    const normalized = status.toLowerCase();
     const variants = {
       running: "bg-primary text-primary-foreground",
-      completed: "bg-success text-white",
+      completed: "bg-green-600 text-white",
       pending: "bg-muted text-muted-foreground",
-      error: "bg-destructive text-destructive-foreground",
+      error: "bg-red-600 text-white",
     };
-    return variants[normalized as keyof typeof variants] || "bg-muted";
+    return variants[status.toLowerCase() as keyof typeof variants] || "bg-muted";
   };
 
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch =
       task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || task.status.toLowerCase() === statusFilter;
-    return matchesSearch && matchesStatus;
+    return matchesSearch;
   });
-
-  if (loading) {
-    return <p className="text-center text-muted-foreground">Loading tasks...</p>;
-  }
-
-  if (error) {
-    return <p className="text-center text-destructive">{error}</p>;
-  }
 
   return (
     <div className="space-y-6">
@@ -150,16 +158,12 @@ export default function Tasks() {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <CardTitle className="text-lg">{task.title}</CardTitle>
-                    <Badge className={getStatusBadge(task.status)}>
-                      {task.status}
-                    </Badge>
+                    <Badge className={getStatusBadge(task.status)}>{task.status}</Badge>
                     <Badge variant="outline" className="text-xs">
                       {task.type}
                     </Badge>
                   </div>
-                  <CardDescription className="text-sm">
-                    {task.description}
-                  </CardDescription>
+                  <CardDescription className="text-sm">{task.description}</CardDescription>
                 </div>
                 <div className="flex gap-2">
                   {task.status.toLowerCase() === "running" ? (
@@ -175,6 +179,7 @@ export default function Tasks() {
                     size="sm"
                     variant="outline"
                     className="hover:bg-destructive hover:text-destructive-foreground"
+                    onClick={() => handleDeleteTask(task.task_id)}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -183,18 +188,13 @@ export default function Tasks() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {/* Progress */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium">Progress</span>
-                    <span className="text-sm text-muted-foreground">
-                      {task.progress}%
-                    </span>
+                    <span className="text-sm text-muted-foreground">{task.progress}%</span>
                   </div>
                   <Progress value={task.progress} className="h-2" />
                 </div>
-
-                {/* Task Info */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-muted-foreground" />
@@ -204,7 +204,7 @@ export default function Tasks() {
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Last run:</span>
-                    <span>{task.lastRun}</span>
+                    <span>{task.lastRun || "Never"}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">Type:</span>
@@ -219,7 +219,7 @@ export default function Tasks() {
         ))}
       </div>
 
-      {/* No tasks found */}
+      {/* Empty state */}
       {filteredTasks.length === 0 && (
         <Card className="bg-card border-border">
           <CardContent className="flex flex-col items-center justify-center py-12">

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "@/lib/api"; // ✅ use centralized axios instance
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,113 +34,91 @@ import {
 } from "lucide-react";
 
 export default function Logs() {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
 
-  const logs = [
-    {
-      id: "log-001",
-      timestamp: "2024-01-16 14:32:15",
-      task: "Email Classification",
-      type: "AI_RUN",
-      status: "SUCCESS",
-      duration: "1.2s",
-      details: "Processed 45 emails successfully",
-      user: "John Doe",
-    },
-    {
-      id: "log-002",
-      timestamp: "2024-01-16 14:28:42",
-      task: "Sentiment Analysis",
-      type: "AI_RUN",
-      status: "SUCCESS",
-      duration: "0.8s",
-      details: "Analyzed customer feedback with 94% confidence",
-      user: "Sarah Johnson",
-    },
-    {
-      id: "log-003",
-      timestamp: "2024-01-16 14:15:33",
-      task: "Response Generator",
-      type: "AI_RUN",
-      status: "ERROR",
-      duration: "2.1s",
-      details: "API rate limit exceeded",
-      user: "Mike Chen",
-    },
-    {
-      id: "log-004",
-      timestamp: "2024-01-16 13:45:17",
-      task: "Ticket Router",
-      type: "SYSTEM",
-      status: "SUCCESS",
-      duration: "0.3s",
-      details: "Routed 12 tickets to appropriate departments",
-      user: "System",
-    },
-    {
-      id: "log-005",
-      timestamp: "2024-01-16 13:22:08",
-      task: "Customer Data Import",
-      type: "DATA",
-      status: "WARNING",
-      duration: "5.2s",
-      details: "Imported 1,250 records with 3 validation warnings",
-      user: "Admin",
-    },
-    {
-      id: "log-006",
-      timestamp: "2024-01-16 12:58:44",
-      task: "Auto Response",
-      type: "AI_RUN",
-      status: "SUCCESS",
-      duration: "1.5s",
-      details: "Generated responses for 23 inquiries",
-      user: "System",
-    },
-  ];
+  type Log = {
+  id: number;
+  message: string;
+  level: string;
+  timestamp: string;
+};
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "SUCCESS":
-        return <CheckCircle className="w-4 h-4 text-success" />;
-      case "ERROR":
-        return <XCircle className="w-4 h-4 text-destructive" />;
-      case "WARNING":
-        return <AlertTriangle className="w-4 h-4 text-warning" />;
-      default:
-        return <Clock className="w-4 h-4 text-muted-foreground" />;
+  // Fetch logs from backend
+  const fetchLogs = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get<Log[]>("/logs"); // ✅ tell TS the type
+      setLogs(res.data);
+    } catch (err) {
+      console.error("Error fetching logs:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  // Filtering logic
+  const filteredLogs = logs.filter((log) => {
+    const matchesSearch =
+      log.task?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.details?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.user?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === "all" || log.status?.toLowerCase() === statusFilter;
+
+    const matchesType =
+      typeFilter === "all" || log.type?.toLowerCase() === typeFilter;
+
+    return matchesSearch && matchesStatus && matchesType;
+  });
+
+  // Helpers for styling badges
   const getStatusBadge = (status: string) => {
-    const variants = {
-      SUCCESS: "bg-success text-white",
-      ERROR: "bg-destructive text-destructive-foreground",
-      WARNING: "bg-warning text-black",
-    };
-    return variants[status as keyof typeof variants] || "bg-muted";
+    switch (status?.toLowerCase()) {
+      case "success":
+        return "bg-green-500 text-white";
+      case "error":
+        return "bg-red-500 text-white";
+      case "warning":
+        return "bg-yellow-500 text-black";
+      default:
+        return "bg-gray-300 text-black";
+    }
   };
 
   const getTypeBadge = (type: string) => {
-    const variants = {
-      AI_RUN: "bg-primary text-primary-foreground",
-      SYSTEM: "bg-secondary text-secondary-foreground",
-      DATA: "bg-info text-white",
-    };
-    return variants[type as keyof typeof variants] || "bg-muted";
+    switch (type?.toLowerCase()) {
+      case "ai_run":
+        return "bg-purple-500 text-white";
+      case "system":
+        return "bg-blue-500 text-white";
+      case "data":
+        return "bg-orange-500 text-white";
+      default:
+        return "bg-gray-300 text-black";
+    }
   };
 
-  const filteredLogs = logs.filter((log) => {
-    const matchesSearch = 
-      log.task.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.user.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || log.status.toLowerCase() === statusFilter;
-    const matchesType = typeFilter === "all" || log.type.toLowerCase() === typeFilter;
-    return matchesSearch && matchesStatus && matchesType;
-  });
+  const getStatusIcon = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "success":
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case "error":
+        return <XCircle className="w-4 h-4 text-red-500" />;
+      case "warning":
+        return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -155,9 +134,14 @@ export default function Logs() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" className="hover:bg-accent transition-smooth">
+          <Button
+            variant="outline"
+            onClick={fetchLogs}
+            disabled={loading}
+            className="hover:bg-accent transition-smooth"
+          >
             <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
+            {loading ? "Refreshing..." : "Refresh"}
           </Button>
           <Button variant="outline" className="hover:bg-accent transition-smooth">
             <Download className="w-4 h-4 mr-2" />
@@ -166,14 +150,14 @@ export default function Logs() {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards (Static for now) */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-card border-border shadow-card">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Events</p>
-                <p className="text-2xl font-bold">1,247</p>
+                <p className="text-2xl font-bold">{logs.length}</p>
               </div>
               <ScrollText className="w-8 h-8 text-primary" />
             </div>
@@ -293,7 +277,7 @@ export default function Logs() {
                     <TableCell className="font-medium">{log.task}</TableCell>
                     <TableCell>
                       <Badge className={getTypeBadge(log.type)}>
-                        {log.type.replace("_", " ")}
+                        {log.type?.replace("_", " ")}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -326,7 +310,7 @@ export default function Logs() {
             </Table>
           </div>
 
-          {filteredLogs.length === 0 && (
+          {filteredLogs.length === 0 && !loading && (
             <div className="flex flex-col items-center justify-center py-12">
               <ScrollText className="w-12 h-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">No logs found</h3>

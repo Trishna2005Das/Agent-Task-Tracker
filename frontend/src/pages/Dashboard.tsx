@@ -1,4 +1,11 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -13,77 +20,94 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import axios from "axios";
+
+interface Task {
+  task_id: string;
+  title: string;
+  description: string;
+  status: string;
+  progress: number;
+  type: string;
+}
 
 export default function Dashboard() {
-  const stats = [
-    {
-      title: "Active Tasks",
-      value: "24",
-      change: "+12%",
-      icon: CheckSquare,
-      color: "text-primary",
-    },
-    {
-      title: "AI Runs Today",
-      value: "156",
-      change: "+8%",
-      icon: Zap,
-      color: "text-success",
-    },
-    {
-      title: "Response Time",
-      value: "2.3s",
-      change: "-15%",
-      icon: Clock,
-      color: "text-info",
-    },
-    {
-      title: "Customer Satisfaction",
-      value: "97%",
-      change: "+3%",
-      icon: TrendingUp,
-      color: "text-warning",
-    },
-  ];
+  const [recentTasks, setRecentTasks] = useState<Task[]>([]);
+  const [stats, setStats] = useState<any[]>([]);
+  const [name, setName] = useState<string>("");
 
-  const recentTasks = [
-    {
-      id: 1,
-      title: "Email Classification AI",
-      status: "Running",
-      progress: 75,
-      type: "Classification",
-    },
-    {
-      id: 2,
-      title: "Sentiment Analysis",
-      status: "Completed",
-      progress: 100,
-      type: "Analysis",
-    },
-    {
-      id: 3,
-      title: "Response Generator",
-      status: "Pending",
-      progress: 0,
-      type: "Generation",
-    },
-    {
-      id: 4,
-      title: "Ticket Routing",
-      status: "Running",
-      progress: 45,
-      type: "Routing",
-    },
-  ];
+  useEffect(() => {
+    const storedName = localStorage.getItem("name");
+    if (storedName) {
+      setName(storedName);
+    }
+  }, []);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/tasks`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const tasks = (response.data as { tasks: Task[] }).tasks;
+
+        setRecentTasks(tasks.slice(0, 4)); // First 4 tasks
+
+        const running = tasks.filter((t) => t.status === "running").length;
+        const completed = tasks.filter((t) => t.status === "completed").length;
+        const pending = tasks.filter((t) => t.status === "pending").length;
+
+        setStats([
+          {
+            title: "Active Tasks",
+            value: `${tasks.length}`,
+            change: "+12%",
+            icon: CheckSquare,
+            color: "text-primary",
+          },
+          {
+            title: "Running Tasks",
+            value: `${running}`,
+            change: "+5%",
+            icon: Zap,
+            color: "text-success",
+          },
+          {
+            title: "Pending Tasks",
+            value: `${pending}`,
+            change: "-3%",
+            icon: Clock,
+            color: "text-info",
+          },
+          {
+            title: "Completed Tasks",
+            value: `${completed}`,
+            change: "+8%",
+            icon: TrendingUp,
+            color: "text-warning",
+          },
+        ]);
+      } catch (err) {
+        console.error("Error fetching tasks:", err);
+      }
+    };
+
+    fetchTasks();
+  }, []);
 
   const getStatusBadge = (status: string) => {
-    const variants = {
-      Running: "bg-primary text-primary-foreground",
-      Completed: "bg-success text-white",
-      Pending: "bg-muted text-muted-foreground",
+    const variants: Record<string, string> = {
+      running: "bg-primary text-primary-foreground",
+      completed: "bg-success text-white",
+      pending: "bg-muted text-muted-foreground",
     };
-    return variants[status as keyof typeof variants] || "bg-muted";
+    return variants[status.toLowerCase()] || "bg-muted";
   };
 
   return (
@@ -92,7 +116,7 @@ export default function Dashboard() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            Welcome back, John!
+            Welcome back, {name || "there"}!
           </h1>
           <p className="text-muted-foreground mt-1">
             Here's what's happening with your AI support automation today.
@@ -125,13 +149,13 @@ export default function Dashboard() {
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.title}
               </CardTitle>
-              <stat.icon className={`h-5 w-5 ${stat.color} group-hover:scale-110 transition-smooth`} />
+              <stat.icon
+                className={`h-5 w-5 ${stat.color} group-hover:scale-110 transition-smooth`}
+              />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-success mt-1">
-                {stat.change} from last week
-              </p>
+              <p className="text-xs text-success mt-1">{stat.change} from last week</p>
             </CardContent>
           </Card>
         ))}
@@ -162,15 +186,13 @@ export default function Dashboard() {
             <div className="space-y-4">
               {recentTasks.map((task) => (
                 <div
-                  key={task.id}
+                  key={task.task_id}
                   className="flex items-center justify-between p-4 rounded-lg bg-gradient-glow border border-border hover:shadow-card transition-smooth"
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h4 className="font-medium">{task.title}</h4>
-                      <Badge className={getStatusBadge(task.status)}>
-                        {task.status}
-                      </Badge>
+                      <Badge className={getStatusBadge(task.status)}>{task.status}</Badge>
                     </div>
                     <div className="flex items-center gap-4">
                       <Progress value={task.progress} className="flex-1 h-2" />
