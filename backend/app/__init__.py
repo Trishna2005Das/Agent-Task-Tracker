@@ -13,7 +13,7 @@ def create_app():
     app = Flask(__name__)
     CORS(
     app,
-    resources={r"/*": {"origins": "http://localhost:8081"}},
+    resources={r"/*": {"origins": ["http://localhost:8081",  "https://Trishna2005Das.github.io"]}},
     supports_credentials=True,
     allow_headers=["Content-Type", "Authorization"],
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]

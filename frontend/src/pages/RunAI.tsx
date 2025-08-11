@@ -1,5 +1,11 @@
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -26,46 +32,49 @@ export default function RunAI() {
   const { toast } = useToast();
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [selectedModel, setSelectedModel] = useState("");
+
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [selectedTaskId, setSelectedTaskId] = useState("");
   const [inputText, setInputText] = useState("");
   const [results, setResults] = useState<any>(null);
 
-  const aiModels = [
-    {
-      id: "sentiment-analyzer",
-      name: "Sentiment Analyzer",
-      description: "Analyze customer sentiment from text",
-      type: "Analysis",
-      speed: "Fast",
-    },
-    {
-      id: "email-classifier",
-      name: "Email Classifier",
-      description: "Classify emails by category and priority",
-      type: "Classification",
-      speed: "Medium",
-    },
-    {
-      id: "response-generator",
-      name: "Response Generator",
-      description: "Generate contextual customer responses",
-      type: "Generation",
-      speed: "Slow",
-    },
-    {
-      id: "ticket-router",
-      name: "Ticket Router",
-      description: "Route tickets to appropriate departments",
-      type: "Routing",
-      speed: "Fast",
-    },
-  ];
+  // Fetch tasks from backend on mount
+  useEffect(() => {
+    const fetchTasks = async () => {
+      const token = localStorage.getItem("token");
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/tasks`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setTasks(data.tasks || []);
+        } else {
+          toast({
+            title: "Failed to fetch tasks",
+            description: data.error || "Unknown error",
+            variant: "destructive",
+          });
+        }
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to fetch tasks",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchTasks();
+  }, [toast]);
 
   const handleRunAI = async () => {
-    if (!selectedModel || !inputText.trim()) {
+    if (!selectedTaskId || !inputText.trim()) {
       toast({
         title: "Missing Information",
-        description: "Please select a model and provide input text.",
+        description: "Please select a task and provide input text.",
         variant: "destructive",
       });
       return;
@@ -85,14 +94,18 @@ export default function RunAI() {
         });
       }, 300);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/tasks/${selectedModel}/run`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`, 
-        },
-        body: JSON.stringify({ input: inputText }),
-      });
+      // Adjust API endpoint for running AI on the selected task
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/tasks/${selectedTaskId}/run-ai`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ input: inputText }),
+        }
+      );
 
       const data = await response.json();
       clearInterval(progressInterval);
@@ -102,8 +115,10 @@ export default function RunAI() {
       }
 
       setProgress(100);
+      const task = tasks.find((t) => t.task_id === selectedTaskId);
+
       setResults({
-        model: aiModels.find((m) => m.id === selectedModel)?.name || selectedModel,
+        taskTitle: task?.title || selectedTaskId,
         input: inputText,
         confidence: Math.random() * 0.3 + 0.7,
         processingTime: Math.random() * 2 + 0.5,
@@ -138,7 +153,7 @@ export default function RunAI() {
 
   const handleClear = () => {
     setInputText("");
-    setSelectedModel("");
+    setSelectedTaskId("");
     setProgress(0);
     setResults(null);
   };
@@ -152,57 +167,63 @@ export default function RunAI() {
           AI Processing Hub
         </h1>
         <p className="text-muted-foreground mt-1">
-          Run AI models on your customer support data
+          Run AI models on your created tasks
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Input Section */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Model Selection */}
+          {/* Task Selection */}
           <Card className="bg-card border-border shadow-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Cpu className="w-5 h-5 text-primary" />
-                Select AI Model
+                Select Task
               </CardTitle>
               <CardDescription>
-                Choose the AI model for your task
+                Choose one of your created tasks to run AI on
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Select value={selectedModel} onValueChange={setSelectedModel}>
+              <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose an AI model" />
+                  <SelectValue placeholder="Choose a Task" />
                 </SelectTrigger>
-                <SelectContent>
-                  {aiModels.map((model) => (
-                    <SelectItem key={model.id} value={model.id}>
-                      <div className="flex flex-col">
-                        <div className="font-medium">{model.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {model.description} • {model.speed} processing
-                        </div>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+               <SelectContent>
+  {tasks.length === 0 && (
+    <SelectItem value="none" disabled>
+      No tasks found
+    </SelectItem>
+  )}
+  {tasks.map((task) => (
+    <SelectItem key={task.task_id} value={task.task_id}>
+      <div className="flex flex-col">
+        <div className="font-medium">{task.title}</div>
+        <div className="text-xs text-muted-foreground">
+          Status: {task.status} • Created: {task.createdAt}
+        </div>
+      </div>
+    </SelectItem>
+  ))}
+</SelectContent>
+
               </Select>
 
-              {selectedModel && (
+              {selectedTaskId && (
                 <div className="mt-4 p-4 bg-gradient-glow rounded-lg border">
                   {(() => {
-                    const model = aiModels.find((m) => m.id === selectedModel);
+                    const task = tasks.find((t) => t.task_id === selectedTaskId);
                     return (
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="font-medium">{model?.name}</h4>
-                          <p className="text-sm text-muted-foreground">{model?.description}</p>
+                          <h4 className="font-medium">{task?.title}</h4>
+                          <p className="text-sm text-muted-foreground">{task?.description}</p>
                         </div>
                         <div className="flex gap-2">
-                          <Badge variant="outline">{model?.type}</Badge>
-                          <Badge variant={model?.speed === "Fast" ? "default" : "secondary"}>
-                            {model?.speed}
+                          <Badge variant="outline">{task?.status}</Badge>
+                          <Badge variant={task?.status === "pending" ? "secondary" : "default"}>
+                            Created {task?.createdAt}
                           </Badge>
                         </div>
                       </div>
@@ -226,7 +247,7 @@ export default function RunAI() {
                 <Label htmlFor="input">Text Input</Label>
                 <Textarea
                   id="input"
-                  placeholder="Paste your customer message, email, or ticket content here..."
+                  placeholder="Paste your input text here..."
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   rows={6}
@@ -239,7 +260,7 @@ export default function RunAI() {
                   <Button
                     onClick={handleRunAI}
                     className="bg-gradient-primary hover:shadow-glow transition-smooth"
-                    disabled={!selectedModel || !inputText.trim()}
+                    disabled={!selectedTaskId || !inputText.trim()}
                   >
                     <Play className="w-4 h-4 mr-2" />
                     Run AI Analysis
@@ -294,8 +315,8 @@ export default function RunAI() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gradient-glow rounded-lg">
                   <div className="text-center">
-                    <div className="text-sm text-muted-foreground">Model</div>
-                    <div className="font-medium">{results.model}</div>
+                    <div className="text-sm text-muted-foreground">Task</div>
+                    <div className="font-medium">{results.taskTitle}</div>
                   </div>
                   <div className="text-center">
                     <div className="text-sm text-muted-foreground">Confidence</div>
