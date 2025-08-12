@@ -1,6 +1,4 @@
-# backend/app/routes/ai_routes.py
-
-from flask import Blueprint, jsonify, g
+from flask import Blueprint, jsonify, g, request
 from app.utils.jwt_helper import token_required
 from app.models.task_model import get_task_by_id
 from app.utils.langchain_tools import run_agent_for_task
@@ -13,43 +11,56 @@ ai_bp = Blueprint("ai", __name__)
 @token_required
 def run_ai_for_task_route(task_id):
     """
-    Run Azure OpenAI agent for a given stored task.
+    Run Gemini AI agent for a given stored task.
     Updates task status and logs the AI output.
+    Returns the AI output as JSON.
     """
     try:
         user_id = g.user_id
+        print(f"Received JSON body: {request.get_json()}")
 
-        # ✅ Ensure task exists
+        # Ensure task exists
         task = get_task_by_id(task_id, user_id)
         if not task:
             return jsonify({"error": "Task not found"}), 404
 
-        # ✅ Set status to running
+        # Set task status to running
         mongo.db.tasks.update_one(
             {"task_id": task_id, "user_id": user_id},
             {"$set": {"status": "running", "last_run": datetime.utcnow()}}
         )
 
-        # ✅ Run the AI via langchain_tools
-        ai_response = run_agent_for_task(task_id, user_id)
+        # Run the agentic AI loop
+        context = run_agent_for_task(task_id, user_id)
 
-        # ✅ Set status to completed
-        mongo.db.tasks.update_one(
-            {"task_id": task_id, "user_id": user_id},
-            {"$set": {"status": "completed", "progress": 100}}
-        )
+        if context.get("error"):
+            # Mark task as error in DB if error occurred
+            mongo.db.tasks.update_one(
+                {"task_id": task_id, "user_id": user_id},
+                {"$set": {"status": "error"}}
+            )
+            return jsonify({
+                "error": "AI processing failed",
+                "details": context["error"]
+            }), 500
 
+        # Debug print for backend logs
+        print(f"Agentic AI completed for task {task_id} by user {user_id}. Steps completed: {context.get('steps_completed')}")
+        
+        # Return the AI response and metadata as JSON
         return jsonify({
-            "message": "AI task run completed",
-            "ai_response": ai_response
+            "message": "Agentic AI task completed",
+            "ai_response": context.get("results"),
+            "steps_completed": context.get("steps_completed"),
         }), 200
 
     except Exception as e:
-        # ✅ On failure, mark task as error
+        # On unexpected failure, mark task as error
         mongo.db.tasks.update_one(
             {"task_id": task_id, "user_id": g.user_id},
             {"$set": {"status": "error"}}
         )
+        print(f"Error in run_ai_for_task_route: {e}")
         return jsonify({
             "error": "AI processing failed",
             "details": str(e)
